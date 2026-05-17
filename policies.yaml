@@ -1,0 +1,11 @@
+global:
+  pii_masking: true
+
+applications:
+  finance_bot:
+    block_topics:
+      - investment_advice
+
+  support_bot:
+    allow_topics:
+      - refunds
