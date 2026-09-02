@@ -5,6 +5,7 @@ from schemas.response import GuardrailResponse, GuardrailDecision
 
 from policies.loader import PolicyLoader
 from pipeline.engine import GuardrailPipeline
+
 from guardrails.pii import PIIGuardrail
 from guardrails.injection import InjectionGuardrail
 
@@ -30,7 +31,6 @@ async def generate(req: GuardrailRequest):
     ])
 
     context = await pipeline.run(context)
-
     if context.get("blocked"):
         return GuardrailResponse(
             output="Request blocked due to policy violation",
@@ -41,7 +41,7 @@ async def generate(req: GuardrailRequest):
         )
 
     return GuardrailResponse(
-        output="allow",
+        output=context['query'],
         decision=GuardrailDecision(
             action="allow"
         )
@@ -50,9 +50,8 @@ async def generate(req: GuardrailRequest):
 
 async def main():
     req = GuardrailRequest(
-        app_id="123",
-        user_id="1",
-        query="Hello",
+        app_id="support_bot",
+        query="Call me at 9876543210 or email test@example.com",
     )
 
     result = await generate(req=req)

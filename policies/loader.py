@@ -7,5 +7,5 @@ class PolicyLoader:
 
     def get_policies(self, app_id: str):
         global_policies = self.policies.get("global", {})
-        app_policies = self.policies.get("applications", {}).get(app_id, {})
-        return {**global_policies, **app_policies}
+        app_policies = self.policies.get("applications", {})
+        return {"global_policies": global_policies, "application_policies": app_policies}

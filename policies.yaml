@@ -1,11 +1,27 @@
 global:
   pii_masking: true
+  prompt_injection: true
+  patterns:
+    phone:
+      - "[Phone]"
+      - '\b\d{10}\b'
+    email:
+      - '[Email]' 
+      - '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
 
 applications:
   finance_bot:
+    pii_masking: false
     block_topics:
       - investment_advice
+      - Call me
+    allow_topics:
+      - Allow All
+      - Allow Nothing
 
   support_bot:
+    pii_masking: true
     allow_topics:
       - refunds
+    block_topics:
+      - Call me

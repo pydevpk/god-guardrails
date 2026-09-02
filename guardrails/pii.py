@@ -1,5 +1,5 @@
 import re
-from .base import Guardrail
+from .base import Guardrail, UtilityWorker
 
 class PIIGuardrail(Guardrail):
     name = "pii"
@@ -7,11 +7,25 @@ class PIIGuardrail(Guardrail):
     async def check(self, context):
         text = context["query"]
 
-        # simple example (replace with Presidio later)
-        masked = re.sub(r"\b\d{10}\b", "[PHONE]", text)
+        is_pii, patterns = await UtilityWorker.check_masking_required(
+            context=context
+        )
 
-        if masked != text:
-            context["query"] = masked
-            context["violations"].append("PII masked")
+        if is_pii:
+            for pattern in patterns:
+                regex_pattern = pattern["value"]
+                label = pattern["label"]
+
+                masked = re.sub(
+                    regex_pattern,
+                    label,
+                    text
+                )
+
+                if masked != text:
+                    text = masked
+                    context["violations"].append("PII masked")
+                    
+            context["query"] = text
 
         return context
