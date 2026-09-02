@@ -16,16 +16,20 @@ class PIIGuardrail(Guardrail):
                 regex_pattern = pattern["value"]
                 label = pattern["label"]
 
-                masked = re.sub(
-                    regex_pattern,
-                    label,
-                    text
-                )
+                try:
+                    masked = re.sub(
+                        regex_pattern,
+                        label,
+                        text
+                    )
+                except re.error:
+                    context["violations"].append(f"Invalid PII pattern skipped: {label}")
+                    continue
 
                 if masked != text:
                     text = masked
-                    context["violations"].append("PII masked")
-                    
+                    context["violations"].append(f"PII masked: {label}")
+
             context["query"] = text
 
         return context

@@ -39,17 +39,20 @@ class UtilityWorker:
 
 
 	@staticmethod
-	async def load_pattern(pattern: Dict) -> Dict:
+	async def load_pattern(pattern: Dict, context: Dict = None) -> Dict:
 		"""
 		This function format the patterns and will return as required by the pii masking.
+		A malformed entry (not a [replacement, regex] pair) is skipped rather than crashing the
+		guardrail; if a context is given, the skip is recorded in context["violations"] so the
+		bad config stays visible instead of failing silently.
 		"""
-		return [
-			{
-				"label": value[0],
-				"value": value[1]
-			}
-			for value in pattern.values()
-		]
+		formatted = []
+		for name, value in pattern.items():
+			if isinstance(value, (list, tuple)) and len(value) >= 2:
+				formatted.append({"label": value[0], "value": value[1]})
+			elif context is not None:
+				context.setdefault("violations", []).append(f"Invalid PII pattern skipped: {name}")
+		return formatted
 
 	@staticmethod
 	async def check_masking_required(context: Dict) -> Tuple:
@@ -65,7 +68,7 @@ class UtilityWorker:
 		pii_masking = global_policies.get("pii_masking", False)
 		pii_masking_pattern = []
 		if pii_masking:
-			pii_masking_pattern = await UtilityWorker.load_pattern(global_policies.get("patterns", {}))
+			pii_masking_pattern = await UtilityWorker.load_pattern(global_policies.get("patterns", {}), context=context)
 
 		application_policies = await UtilityWorker.load_application_policies(context=context)
 		if application_policies and "pii_masking" in application_policies:
@@ -76,7 +79,7 @@ class UtilityWorker:
 				pii_masking_pattern = []
 			else:
 				pii_masking = application_pii_masking
-				application_pii_masking_pattern = await UtilityWorker.load_pattern(application_policies.get("patterns", {}))
+				application_pii_masking_pattern = await UtilityWorker.load_pattern(application_policies.get("patterns", {}), context=context)
 				if application_pii_masking_pattern:
 					pii_masking_pattern = application_pii_masking_pattern
 
