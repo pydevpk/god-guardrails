@@ -13,6 +13,17 @@ from guardrails.injection import InjectionGuardrail
 
 policy_loader = PolicyLoader("policies.yaml")
 
+
+async def mock_llm(prompt: str) -> str:
+    """
+    Stand-in for a real provider call. InjectionGuardrail only requires an
+    `async def llm(prompt: str) -> str` callable - swap this for e.g. an
+    Anthropic/OpenAI client call and return the model's raw text reply.
+    """
+    model_res = "SAFE"
+    return model_res
+
+
 async def generate(req: GuardrailRequest):
 
     policies = policy_loader.get_policies(req.app_id)
@@ -20,6 +31,7 @@ async def generate(req: GuardrailRequest):
     context = {
         "query": req.query,
         "app_id": req.app_id,
+        "system_prompt": req.system_prompt,
         "violations": [],
         "blocked": False,
         "policies": policies
@@ -27,7 +39,7 @@ async def generate(req: GuardrailRequest):
 
     pipeline = GuardrailPipeline([
         PIIGuardrail(),
-        InjectionGuardrail(),
+        InjectionGuardrail(llm=mock_llm),
     ])
 
     context = await pipeline.run(context)
@@ -51,6 +63,7 @@ async def generate(req: GuardrailRequest):
 async def main():
     req = GuardrailRequest(
         app_id="support_bot",
+        system_prompt="You are a support assistant. Only help with refund questions. ",
         query="Call me at 9876543210 or email test@example.com",
     )
 

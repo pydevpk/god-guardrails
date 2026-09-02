@@ -102,21 +102,3 @@ class UtilityWorker:
 			prompt_injection = application_policies["prompt_injection"]
 
 		return prompt_injection
-
-	@staticmethod
-	async def check_block_topics(context: Dict) -> list:
-		"""
-		This function resolves the list of blocked topics for this application.
-		Global policy is checked first. If the application policy does not mention block_topics at all, the
-		global list is inherited as-is. If the application policy explicitly defines block_topics, that list
-		overrides the global one entirely.
-		"""
-
-		global_policies = await UtilityWorker.load_global_policies(context=context)
-		block_topics = global_policies.get("block_topics", [])
-
-		application_policies = await UtilityWorker.load_application_policies(context=context)
-		if application_policies and "block_topics" in application_policies:
-			block_topics = application_policies["block_topics"]
-
-		return block_topics
