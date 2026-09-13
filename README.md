@@ -210,6 +210,19 @@ async def generate(req: GuardrailRequest):
     )
 ```
 
+## Testing
+
+The `tests/` folder covers policy resolution (`UtilityWorker`), both guardrails
+(including fail-closed/fail-safe paths and malformed-config handling), the
+pipeline engine, `PolicyLoader`, the pydantic schemas, and an end-to-end
+integration path against the real `policies.yaml` — all with mocked `llm`
+callables, so no network calls or API keys are needed.
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
 ## Adding a new guardrail
 
 1. Subclass `Guardrail` (from [god_guardrails/guardrails/base.py](god_guardrails/guardrails/base.py)) and implement
