@@ -1,27 +1,33 @@
 import asyncio
 
-from schemas.request import GuardrailRequest
-from schemas.response import GuardrailResponse, GuardrailDecision
+from openai import AsyncOpenAI
 
-from policies.loader import PolicyLoader
-from pipeline.engine import GuardrailPipeline
+from god_guardrails.schemas.request import GuardrailRequest
+from god_guardrails.schemas.response import GuardrailResponse, GuardrailDecision
 
-from guardrails.pii import PIIGuardrail
-from guardrails.injection import InjectionGuardrail
+from god_guardrails.policies.loader import PolicyLoader
+from god_guardrails.pipeline.engine import GuardrailPipeline
+
+from god_guardrails.guardrails.pii import PIIGuardrail
+from god_guardrails.guardrails.injection import InjectionGuardrail
 
 
 
 policy_loader = PolicyLoader("policies.yaml")
+openai_client = AsyncOpenAI()  # reads OPENAI_API_KEY from the environment
 
 
-async def mock_llm(prompt: str) -> str:
+async def openai_llm(prompt: str) -> str:
     """
-    Stand-in for a real provider call. InjectionGuardrail only requires an
-    `async def llm(prompt: str) -> str` callable - swap this for e.g. an
-    Anthropic/OpenAI client call and return the model's raw text reply.
+    InjectionGuardrail only requires an `async def llm(prompt: str) -> str` callable -
+    this adapter fulfills it using OpenAI's chat completions API.
     """
-    model_res = "SAFE"
-    return model_res
+    response = await openai_client.chat.completions.create(
+        model="gpt-4o-mini",
+        temperature=0,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content
 
 
 async def generate(req: GuardrailRequest):
@@ -39,7 +45,7 @@ async def generate(req: GuardrailRequest):
 
     pipeline = GuardrailPipeline([
         PIIGuardrail(),
-        InjectionGuardrail(llm=mock_llm),
+        InjectionGuardrail(llm=openai_llm),
     ])
 
     context = await pipeline.run(context)

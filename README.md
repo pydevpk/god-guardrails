@@ -28,16 +28,20 @@ GuardrailRequest -> GuardrailPipeline -> [Guardrail, Guardrail, ...] -> Guardrai
 
 ## Project layout
 
+All library code lives under the top-level `god_guardrails` package (so its
+module names don't collide with unrelated `schemas`/`policies`/etc. packages
+in whatever environment it's installed into).
+
 | Path | Purpose |
 |---|---|
-| [schemas/request.py](schemas/request.py) | `GuardrailRequest` — input model (`app_id`, `query`, `system_prompt`, `metadata`, `stream`) |
-| [schemas/response.py](schemas/response.py) | `GuardrailResponse` / `GuardrailDecision` — output model |
+| [god_guardrails/schemas/request.py](god_guardrails/schemas/request.py) | `GuardrailRequest` — input model (`app_id`, `query`, `system_prompt`, `metadata`, `stream`) |
+| [god_guardrails/schemas/response.py](god_guardrails/schemas/response.py) | `GuardrailResponse` / `GuardrailDecision` — output model |
 | [policies.yaml](policies.yaml) | Global + per-application policy config |
-| [policies/loader.py](policies/loader.py) | `PolicyLoader` — reads the YAML, resolves policies for a given `app_id` |
-| [pipeline/engine.py](pipeline/engine.py) | `GuardrailPipeline` — runs a list of guardrails in order, stops on `blocked` |
-| [guardrails/base.py](guardrails/base.py) | `Guardrail` base class + `UtilityWorker` (policy resolution helpers) |
-| [guardrails/pii.py](guardrails/pii.py) | `PIIGuardrail` — regex-based PII masking |
-| [guardrails/injection.py](guardrails/injection.py) | `InjectionGuardrail` — LLM-based system-prompt-bypass detection |
+| [god_guardrails/policies/loader.py](god_guardrails/policies/loader.py) | `PolicyLoader` — reads the YAML, resolves policies for a given `app_id` |
+| [god_guardrails/pipeline/engine.py](god_guardrails/pipeline/engine.py) | `GuardrailPipeline` — runs a list of guardrails in order, stops on `blocked` |
+| [god_guardrails/guardrails/base.py](god_guardrails/guardrails/base.py) | `Guardrail` base class + `UtilityWorker` (policy resolution helpers) |
+| [god_guardrails/guardrails/pii.py](god_guardrails/guardrails/pii.py) | `PIIGuardrail` — regex-based PII masking |
+| [god_guardrails/guardrails/injection.py](god_guardrails/guardrails/injection.py) | `InjectionGuardrail` — LLM-based system-prompt-bypass detection |
 | [test.py](test.py) | Example entry point showing how to assemble and run a pipeline |
 
 ## Policy model (`policies.yaml`)
@@ -135,16 +139,27 @@ as unsafe by default (fail closed):
   → **blocked** (can't verify safety).
 - Reply parses as `INJECTION` → **blocked**. Parses as `SAFE` → allowed.
 
-## Usage
+## Installation
 
-Install dependencies:
+The library itself only needs `pydantic` and `PyYAML` — that's declared in
+[setup.py](setup.py) so it can be built/installed as a package:
+
+```bash
+pip install .          # or: pip install -e . for local development
+```
+
+`requirements.txt` is separate and is only for running the example in
+[test.py](test.py), which additionally needs `openai` since the demo wires
+`InjectionGuardrail` up to a real OpenAI call:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Run the example in [test.py](test.py) (it wires in a small mock `llm` callable
-purely to keep the example runnable without a real provider — swap it out):
+## Usage
+
+Run the example (needs `OPENAI_API_KEY` set, since it uses a real OpenAI call
+for the injection check):
 
 ```bash
 python test.py
@@ -154,12 +169,12 @@ To build your own request flow, compose a pipeline from whichever guardrails you
 need, in whatever order you want:
 
 ```python
-from schemas.request import GuardrailRequest
-from schemas.response import GuardrailResponse, GuardrailDecision
-from policies.loader import PolicyLoader
-from pipeline.engine import GuardrailPipeline
-from guardrails.pii import PIIGuardrail
-from guardrails.injection import InjectionGuardrail
+from god_guardrails.schemas.request import GuardrailRequest
+from god_guardrails.schemas.response import GuardrailResponse, GuardrailDecision
+from god_guardrails.policies.loader import PolicyLoader
+from god_guardrails.pipeline.engine import GuardrailPipeline
+from god_guardrails.guardrails.pii import PIIGuardrail
+from god_guardrails.guardrails.injection import InjectionGuardrail
 
 policy_loader = PolicyLoader("policies.yaml")
 
@@ -197,7 +212,7 @@ async def generate(req: GuardrailRequest):
 
 ## Adding a new guardrail
 
-1. Subclass `Guardrail` (from [guardrails/base.py](guardrails/base.py)) and implement
+1. Subclass `Guardrail` (from [god_guardrails/guardrails/base.py](god_guardrails/guardrails/base.py)) and implement
    `async def check(self, context: dict) -> dict`.
 2. If it needs policy-driven configuration, add a `check_*` resolver to
    `UtilityWorker` following the global→application override pattern described

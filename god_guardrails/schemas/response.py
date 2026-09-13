@@ -1,8 +1,8 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Literal
 
 class GuardrailDecision(BaseModel):
-    action: str  # allow | block | mask | modify
+    action: Literal["allow", "block"]
     reasons: List[str] = []
 
 class GuardrailResponse(BaseModel):
